@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Warehouse Camera Demo</title>
+
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+  }
+
+  /* ===== 地图区域 ===== */
+  #map-wrapper {
+    padding: 20px;
+  }
+
+  #map {
+    position: relative;
+    display: inline-block;
+    border: 1px solid #ccc;
+    background: #fff;
+  }
+
+  #map img {
+    display: block;
+    max-width: 100%;
+  }
+
+  /* 摄像头点位 */
+  .camera {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: red;
+    border-radius: 50%;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 4px rgba(0,0,0,.6);
+  }
+
+  .camera:hover {
+    background: #ff5555;
+  }
+
+  /* ===== 弹窗（Modal） ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+  }
+
+  .modal-overlay.show {
+    display: flex;
+  }
+
+  .modal {
+    position: relative;
+    background: #111;
+    border-radius: 10px;
+    padding: 10px;
+    max-width: 95vw;
+    max-height: 95vh;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+
+  .modal-title {
+    color: #ddd;
+    font-size: 14px;
+    margin: 4px 4px 8px;
+  }
+
+  #modal-img {
+    display: block;
+    max-width: 92vw;
+    max-height: 88vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;   /* 核心：保持比例 */
+    background: #000;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    background: #fff;
+    font-size: 18px;
+    line-height: 32px;
+  }
+</style>
+</head>
+
+<body>
+
+<!-- ===== 地图 ===== -->
+<div id="map-wrapper">
+  <div id="map">
+    <img src="/static/warehouse_demo.png" alt="Warehouse Map">
+  </div>
+</div>
+
+<!-- ===== 弹窗 ===== -->
+<div id="modal-overlay" class="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="modal-close">×</button>
+    <div class="modal-title" id="modal-title"></div>
+    <img id="modal-img" alt="Camera Snapshot">
+  </div>
+</div>
+
+<script>
+/* ===== 弹窗控制 ===== */
+const overlay = document.getElementById("modal-overlay");
+const modalImg = document.getElementById("modal-img");
+const modalTitle = document.getElementById("modal-title");
+const closeBtn = document.getElementById("modal-close");
+
+function openModal(url, title) {
+  modalTitle.textContent = title || "";
+  modalImg.src = url;
+  overlay.classList.add("show");
+}
+
+function closeModal() {
+  overlay.classList.remove("show");
+  modalImg.src = "";
+}
+
+overlay.addEventListener("click", (e) => {
+  if (e.target === overlay) closeModal();
+});
+
+closeBtn.addEventListener("click", closeModal);
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeModal();
+});
+
+/* ===== 加载摄像头点位 ===== */
+fetch("/cameras")
+  .then(res => res.json())
+  .then(cameras => {
+    const map = document.getElementById("map");
+
+    cameras.forEach(cam => {
+      const dot = document.createElement("div");
+      dot.className = "camera";
+      dot.style.left = cam.x + "px";
+      dot.style.top = cam.y + "px";
+
+      dot.addEventListener("click", () => {
+        const url = `/snapshot/${cam.nvr_ip}/${cam.channel}?t=${Date.now()}`;
+        const title = `NVR ${cam.nvr_ip} / Channel ${cam.channel}`;
+        openModal(url, title);
+      });
+
+      map.appendChild(dot);
+    });
+  })
+  .catch(err => {
+    console.error("Failed to load cameras:", err);
+  });
+</script>
+
+</body>
+</html>
