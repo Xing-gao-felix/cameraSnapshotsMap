@@ -64,6 +64,8 @@
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
+    aspect-ratio: 1200 / 700;
+    background: #f8fafc;
   }
 
   #warehouse-map-image {
@@ -109,6 +111,23 @@
     margin-top: 10px;
     font-size: 12px;
     color: #555;
+  }
+
+  .coord-box {
+    margin-top: 10px;
+    padding: 8px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: #0f172a;
+    line-height: 1.4;
+  }
+
+  .coord-tip {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #64748b;
   }
 
   .modal-overlay {
@@ -184,6 +203,12 @@
       地图来源：<code>/static/demoMap.svg</code><br>
       说明：采用比例坐标，地图缩放后点位不会偏移。
     </div>
+    <div class="coord-box" id="coord-box">
+      x_ratio: -<br>
+      y_ratio: -<br>
+      svg_x: - / svg_y: -
+      <div class="coord-tip">移动鼠标查看坐标，点击地图可复制 JSON 坐标片段。</div>
+    </div>
   </aside>
 
   <section id="map-wrapper">
@@ -207,8 +232,10 @@ const overlay = document.getElementById("modal-overlay");
 const modalImg = document.getElementById("modal-img");
 const modalTitle = document.getElementById("modal-title");
 const closeBtn = document.getElementById("modal-close");
+const map = document.getElementById("map");
 const cameraLayer = document.getElementById("camera-layer");
 const cameraList = document.getElementById("camera-list");
+const coordBox = document.getElementById("coord-box");
 
 let cameraDomMap = new Map();
 let listDomMap = new Map();
@@ -272,6 +299,60 @@ function renderCameraItem(cam) {
   cameraList.appendChild(li);
   listDomMap.set(cam.id, li);
 }
+
+
+function getRatioPosition(evt) {
+  const rect = map.getBoundingClientRect();
+  if (!rect.width || !rect.height) return null;
+
+  const x = Math.min(Math.max(evt.clientX - rect.left, 0), rect.width);
+  const y = Math.min(Math.max(evt.clientY - rect.top, 0), rect.height);
+
+  const xRatio = x / rect.width;
+  const yRatio = y / rect.height;
+
+  return {
+    xRatio,
+    yRatio,
+    svgX: xRatio * 1200,
+    svgY: yRatio * 700,
+  };
+}
+
+function updateCoordBox(pos) {
+  if (!pos) {
+    coordBox.innerHTML = `x_ratio: -<br>y_ratio: -<br>svg_x: - / svg_y: -\n      <div class="coord-tip">移动鼠标查看坐标，点击地图可复制 JSON 坐标片段。</div>`;
+    return;
+  }
+
+  coordBox.innerHTML = `x_ratio: ${pos.xRatio.toFixed(4)}<br>
+      y_ratio: ${pos.yRatio.toFixed(4)}<br>
+      svg_x: ${pos.svgX.toFixed(1)} / svg_y: ${pos.svgY.toFixed(1)}
+      <div class="coord-tip">移动鼠标查看坐标，点击地图可复制 JSON 坐标片段。</div>`;
+}
+
+map.addEventListener("mousemove", (evt) => {
+  updateCoordBox(getRatioPosition(evt));
+});
+
+map.addEventListener("mouseleave", () => {
+  updateCoordBox(null);
+});
+
+map.addEventListener("click", async (evt) => {
+  if (evt.target.classList.contains("camera") || evt.target.closest(".camera-item")) return;
+
+  const pos = getRatioPosition(evt);
+  if (!pos) return;
+
+  const snippet = `{"x_ratio": ${pos.xRatio.toFixed(4)}, "y_ratio": ${pos.yRatio.toFixed(4)}}`;
+  try {
+    await navigator.clipboard.writeText(snippet);
+    coordBox.title = `已复制: ${snippet}`;
+  } catch (err) {
+    coordBox.title = `复制失败，请手动复制: ${snippet}`;
+  }
+});
 
 fetch("/cameras")
   .then(res => res.json())
