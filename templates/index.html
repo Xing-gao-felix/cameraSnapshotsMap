@@ -66,16 +66,10 @@
     margin: 0 auto;
   }
 
-  #warehouse-svg {
+  #warehouse-map-image {
     display: block;
     width: 100%;
     height: auto;
-  }
-
-  .zone-label {
-    font-size: 18px;
-    font-weight: 700;
-    fill: #444;
   }
 
   .camera-layer {
@@ -187,28 +181,14 @@
     <ul id="camera-list" class="camera-list"></ul>
     <div class="legend">
       红点：普通点位；蓝点：当前选中<br>
+      地图来源：<code>/static/demoMap.svg</code><br>
       说明：采用比例坐标，地图缩放后点位不会偏移。
     </div>
   </aside>
 
   <section id="map-wrapper">
     <div id="map">
-      <svg id="warehouse-svg" viewBox="0 0 1200 700" xmlns="http://www.w3.org/2000/svg" aria-label="Warehouse SVG Map">
-        <rect x="0" y="0" width="1200" height="700" fill="#f8fafc"/>
-        <rect x="50" y="80" width="300" height="520" rx="8" fill="#e2e8f0" stroke="#94a3b8"/>
-        <rect x="450" y="80" width="300" height="520" rx="8" fill="#e2e8f0" stroke="#94a3b8"/>
-        <rect x="850" y="80" width="300" height="520" rx="8" fill="#e2e8f0" stroke="#94a3b8"/>
-
-        <text x="160" y="60" class="zone-label">A区（左侧）</text>
-        <text x="560" y="60" class="zone-label">B区（中间）</text>
-        <text x="960" y="60" class="zone-label">C区（右侧）</text>
-
-        <rect x="360" y="80" width="80" height="520" fill="#fff" stroke="#cbd5e1"/>
-        <rect x="760" y="80" width="80" height="520" fill="#fff" stroke="#cbd5e1"/>
-        <text x="372" y="340" fill="#64748b" font-size="14">通道</text>
-        <text x="772" y="340" fill="#64748b" font-size="14">通道</text>
-      </svg>
-
+      <img id="warehouse-map-image" src="/static/demoMap.svg" alt="Warehouse SVG Map" />
       <div id="camera-layer" class="camera-layer"></div>
     </div>
   </section>
@@ -227,7 +207,6 @@ const overlay = document.getElementById("modal-overlay");
 const modalImg = document.getElementById("modal-img");
 const modalTitle = document.getElementById("modal-title");
 const closeBtn = document.getElementById("modal-close");
-const map = document.getElementById("map");
 const cameraLayer = document.getElementById("camera-layer");
 const cameraList = document.getElementById("camera-list");
 
