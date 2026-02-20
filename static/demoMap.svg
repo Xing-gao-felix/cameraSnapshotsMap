@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-label="Warehouse map">
+  <rect x="0" y="0" width="1200" height="700" fill="#f8fafc"/>
+
+  <rect x="50" y="80" width="300" height="520" rx="8" fill="#e2e8f0" stroke="#94a3b8"/>
+  <rect x="450" y="80" width="300" height="520" rx="8" fill="#e2e8f0" stroke="#94a3b8"/>
+  <rect x="850" y="80" width="300" height="520" rx="8" fill="#e2e8f0" stroke="#94a3b8"/>
+
+  <text x="160" y="60" font-size="28" font-weight="700" fill="#334155">A区（左侧）</text>
+  <text x="560" y="60" font-size="28" font-weight="700" fill="#334155">B区（中间）</text>
+  <text x="960" y="60" font-size="28" font-weight="700" fill="#334155">C区（右侧）</text>
+
+  <rect x="360" y="80" width="80" height="520" fill="#fff" stroke="#cbd5e1"/>
+  <rect x="760" y="80" width="80" height="520" fill="#fff" stroke="#cbd5e1"/>
+  <text x="372" y="340" fill="#64748b" font-size="18">通道</text>
+  <text x="772" y="340" fill="#64748b" font-size="18">通道</text>
+</svg>
