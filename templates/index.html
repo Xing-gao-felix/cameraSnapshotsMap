@@ -2,49 +2,115 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>Warehouse Camera Demo</title>
-
+<title>Warehouse Camera Demo (SVG)</title>
 <style>
   body {
     margin: 0;
     font-family: Arial, sans-serif;
     background: #f4f4f4;
+    color: #222;
   }
 
-  /* ===== 地图区域 ===== */
+  .page {
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 16px;
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    height: fit-content;
+  }
+
+  .panel h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+  }
+
+  .camera-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .camera-item {
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    background: #fafafa;
+  }
+
+  .camera-item:hover,
+  .camera-item.active {
+    background: #eef6ff;
+    border-color: #b8d8ff;
+  }
+
   #map-wrapper {
-    padding: 20px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    overflow: hidden;
   }
 
   #map {
     position: relative;
-    display: inline-block;
-    border: 1px solid #ccc;
-    background: #fff;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
   }
 
-  #map img {
+  #warehouse-map-image {
     display: block;
-    max-width: 100%;
+    width: 100%;
+    height: auto;
   }
 
-  /* 摄像头点位 */
+  .camera-layer {
+    position: absolute;
+    inset: 0;
+  }
+
   .camera {
     position: absolute;
     width: 14px;
     height: 14px;
-    background: red;
+    background: #e53935;
     border-radius: 50%;
     cursor: pointer;
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 4px rgba(0,0,0,.6);
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 6px rgba(0,0,0,.35);
   }
 
-  .camera:hover {
-    background: #ff5555;
+  .camera.active {
+    background: #0d6efd;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 6px rgba(13,110,253,0.22);
   }
 
-  /* ===== 弹窗（Modal） ===== */
+  .camera-tag {
+    position: absolute;
+    transform: translate(12px, -50%);
+    font-size: 12px;
+    padding: 2px 6px;
+    background: rgba(17, 24, 39, 0.88);
+    color: #fff;
+    border-radius: 10px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .legend {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #555;
+  }
+
   .modal-overlay {
     position: fixed;
     inset: 0;
@@ -82,7 +148,7 @@
     max-height: 88vh;
     width: auto;
     height: auto;
-    object-fit: contain;   /* 核心：保持比例 */
+    object-fit: contain;
     background: #000;
   }
 
@@ -99,19 +165,35 @@
     font-size: 18px;
     line-height: 32px;
   }
+
+  @media (max-width: 900px) {
+    .page {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 </head>
-
 <body>
 
-<!-- ===== 地图 ===== -->
-<div id="map-wrapper">
-  <div id="map">
-    <img src="/static/warehouse_demo.png" alt="Warehouse Map">
-  </div>
+<div class="page">
+  <aside class="panel">
+    <h3>摄像头列表</h3>
+    <ul id="camera-list" class="camera-list"></ul>
+    <div class="legend">
+      红点：普通点位；蓝点：当前选中<br>
+      地图来源：<code>/static/demoMap.svg</code><br>
+      说明：采用比例坐标，地图缩放后点位不会偏移。
+    </div>
+  </aside>
+
+  <section id="map-wrapper">
+    <div id="map">
+      <img id="warehouse-map-image" src="/static/demoMap.svg" alt="Warehouse SVG Map" />
+      <div id="camera-layer" class="camera-layer"></div>
+    </div>
+  </section>
 </div>
 
-<!-- ===== 弹窗 ===== -->
 <div id="modal-overlay" class="modal-overlay">
   <div class="modal">
     <button class="modal-close" id="modal-close">×</button>
@@ -121,11 +203,15 @@
 </div>
 
 <script>
-/* ===== 弹窗控制 ===== */
 const overlay = document.getElementById("modal-overlay");
 const modalImg = document.getElementById("modal-img");
 const modalTitle = document.getElementById("modal-title");
 const closeBtn = document.getElementById("modal-close");
+const cameraLayer = document.getElementById("camera-layer");
+const cameraList = document.getElementById("camera-list");
+
+let cameraDomMap = new Map();
+let listDomMap = new Map();
 
 function openModal(url, title) {
   modalTitle.textContent = title || "";
@@ -138,40 +224,74 @@ function closeModal() {
   modalImg.src = "";
 }
 
-overlay.addEventListener("click", (e) => {
-  if (e.target === overlay) closeModal();
-});
+function clearActive() {
+  cameraDomMap.forEach(({ dot }) => dot.classList.remove("active"));
+  listDomMap.forEach((item) => item.classList.remove("active"));
+}
 
-closeBtn.addEventListener("click", closeModal);
+function setActive(cameraId) {
+  clearActive();
+  const point = cameraDomMap.get(cameraId);
+  const item = listDomMap.get(cameraId);
+  if (point) point.dot.classList.add("active");
+  if (item) item.classList.add("active");
+}
 
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeModal();
-});
+function openSnapshot(cam) {
+  setActive(cam.id);
+  const url = `/snapshot/${cam.nvr_ip}/${cam.channel}?t=${Date.now()}`;
+  const title = `${cam.name} | NVR ${cam.nvr_ip} / Channel ${cam.channel}`;
+  openModal(url, title);
+}
 
-/* ===== 加载摄像头点位 ===== */
+function renderCamera(cam) {
+  const dot = document.createElement("div");
+  dot.className = "camera";
+  dot.style.left = `${cam.x_ratio * 100}%`;
+  dot.style.top = `${cam.y_ratio * 100}%`;
+  dot.title = `${cam.name} (${cam.zone})`;
+
+  const tag = document.createElement("div");
+  tag.className = "camera-tag";
+  tag.textContent = `${cam.name}`;
+  tag.style.left = `${cam.x_ratio * 100}%`;
+  tag.style.top = `${cam.y_ratio * 100}%`;
+
+  dot.addEventListener("click", () => openSnapshot(cam));
+  cameraLayer.appendChild(dot);
+  cameraLayer.appendChild(tag);
+
+  cameraDomMap.set(cam.id, { dot, tag });
+}
+
+function renderCameraItem(cam) {
+  const li = document.createElement("li");
+  li.className = "camera-item";
+  li.innerHTML = `<strong>${cam.name}</strong><br><small>${cam.zone} / ${cam.side} / CH-${cam.channel}</small>`;
+  li.addEventListener("click", () => openSnapshot(cam));
+  cameraList.appendChild(li);
+  listDomMap.set(cam.id, li);
+}
+
 fetch("/cameras")
   .then(res => res.json())
   .then(cameras => {
-    const map = document.getElementById("map");
-
     cameras.forEach(cam => {
-      const dot = document.createElement("div");
-      dot.className = "camera";
-      dot.style.left = cam.x + "px";
-      dot.style.top = cam.y + "px";
-
-      dot.addEventListener("click", () => {
-        const url = `/snapshot/${cam.nvr_ip}/${cam.channel}?t=${Date.now()}`;
-        const title = `NVR ${cam.nvr_ip} / Channel ${cam.channel}`;
-        openModal(url, title);
-      });
-
-      map.appendChild(dot);
+      renderCamera(cam);
+      renderCameraItem(cam);
     });
   })
   .catch(err => {
     console.error("Failed to load cameras:", err);
   });
+
+overlay.addEventListener("click", (e) => {
+  if (e.target === overlay) closeModal();
+});
+closeBtn.addEventListener("click", closeModal);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeModal();
+});
 </script>
 
 </body>
